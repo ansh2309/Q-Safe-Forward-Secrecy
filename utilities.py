@@ -13,7 +13,6 @@ PORT1 = 8042
 PORT2 = 8043
 # Previously shared info
 POWER = 128
-IV = bytes([0 for _ in range(16)])
 BLOCK_SIZE = 256 // 8 # AES-256 for security against Grover's
 
 cryptogen = SystemRandom()
@@ -31,23 +30,23 @@ def client_qskef(socket, sender_pubkey, prikey):
     getcontext().prec = 2048
     X = cryptogen.random()
     socket.send(str(X).encode())
-    # Alice's secret
+    # secret
     a = getrandbits(POWER)
-    # Alice's public key
+    # public
     A = Decimal(Decimal(a) * Decimal(X)) % 1
 
-    # Encrypting and sending A
+    # signing and sending A
     send_decimal(socket, prikey, A)
 
-    # Receiving and decrypting B
+    # receiving and verifying B
     B = recv_decimal(socket, sender_pubkey)
 
-    # Alice's Symmetric Key
+    # symmetric key
     KEY_A = (Decimal(a) * Decimal(B)) % 1
 
     PASS = str(KEY_A)[2:]
 
-    # Additional step for security
+    # additional step for security
     KEY = PBKDF2(PASS, "01234567".encode(), BLOCK_SIZE)
     return KEY
 
@@ -60,23 +59,23 @@ def server_qskef(socket, sender_pubkey, prikey):
 
     getcontext().prec = 2048
     X = float(socket.recv().decode())
-    # Bob's secret
+    # secret
     b = getrandbits(POWER)
-    # Bob's public int
+    # public int
     B = Decimal(Decimal(b) * Decimal(X)) % 1
 
-    # Receiving and decrypting A
+    # receiving and verifying A
     A = recv_decimal(socket, sender_pubkey)
 
-    # Encrypting and sending B
+    # signing and sending B
     send_decimal(socket, prikey, B)
 
-    # Bob's Symmetric Key
+    # symmetric key
     KEY_B = (Decimal(b) * Decimal(A)) % 1
 
     PASS = str(KEY_B)[2:]
 
-    # Additional step for security
+    # additional step for security
     KEY = PBKDF2(PASS, "01234567".encode(), BLOCK_SIZE)
     return KEY
 
